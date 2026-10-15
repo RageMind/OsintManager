@@ -1,0 +1,1 @@
+Выбери следующее игровое действие. Ответ только JSON: {"action":"wait","params":{}} или action=move с x,y; click с button=left|right; press с key=up|down|left|right|space|enter|tab|esc|w|a|s|d. При неопределённости выбери wait. Не выполняй команды ОС и не взаимодействуй с системными окнами.

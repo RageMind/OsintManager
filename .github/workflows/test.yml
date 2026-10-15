@@ -23,7 +23,7 @@ jobs:
       - run: python -m pip install -r requirements.txt
       - run: python -m compileall -q agent tests
       - run: ruff check . --select E9,F63,F7,F82
-      - run: pytest -q
+      - run: pytest -q -W error::DeprecationWarning
   browser:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
@@ -35,4 +35,4 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install -r requirements.txt
       - run: python -m playwright install --with-deps chromium
-      - run: pytest -q
+      - run: pytest -q -W error::DeprecationWarning

@@ -106,3 +106,33 @@ def test_single_shared_association_is_not_edge():
     a=record("A",city="Kazan")
     b=record("B",city="Kazan")
     assert build_graph([a,b]).number_of_edges()==0
+
+
+def test_confidence_selected_per_fact():
+    a=record("Public Project A",email="owner@example.org",confidence=0.9)
+    b=record("Public Project B",email="owner@example.org",confidence=0.4)
+    a["facts"]=[{"field":"names","value":"Public Project A","confidence":0.2,
+                 "source":a["sources"][0]["url"],"fetched_at":"2026-10-15",
+                 "derived":False,"method":"source"}]
+    b["facts"]=[{"field":"names","value":"Public Project B","confidence":0.95,
+                 "source":b["sources"][0]["url"],"fetched_at":"2026-10-15",
+                 "derived":False,"method":"source"}]
+    merged=merge_cluster([a,b])
+    assert merged["preferred"]["names"]=="Public Project B"
+    assert any(c["field"]=="names" for c in merged["conflicts"])
+    assert merged["derived"] is True
+
+
+def test_legacy_migration_only_once(tmp_path):
+    db_path=tmp_path/"legacy.sqlite3"
+    db=Store(db_path)
+    target=db.add_target("legacy")
+    db.upsert(target["id"],record("Legacy"))
+    db.db.close()
+    reopened=Store(db_path)
+    assert len(reopened.source_records())==1
+    reopened.delete_targets([target["id"]])
+    reopened.db.close()
+    reopened=Store(db_path)
+    assert reopened.source_records()==[]
+    reopened.db.close()

@@ -116,6 +116,8 @@ def create_app(ctrl):
     async def config_save(request:Request):
         body=await request.json()
         try:
+            if ctrl.task is not None and not ctrl.task.done():
+                raise RuntimeError("Stop the worker before saving configuration")
             if "env" in body: update(body["env"])
             for name,value in body.get("prompts",{}).items(): update_prompt(name,value)
             ctrl.reload()

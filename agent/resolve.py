@@ -125,9 +125,23 @@ def score_pair(a,b):
         return 0.3
     return 0.0
 
-def _confidence(record):
+def _confidence(record,field=None,value=None):
+    if field is not None:
+        facts=[f for f in record.get("facts",[]) if isinstance(f,dict)
+               and f.get("field")==field and f.get("value")==value
+               and not f.get("derived",False)]
+        if facts:
+            return max(float(f.get("confidence",0.5)) for f in facts)
     sources=record.get("sources",[])
     return max((float(s.get("confidence",0.5)) for s in sources),default=0.5)
+
+def _evidence(record,field,value):
+    matches=[f for f in record.get("facts",[]) if isinstance(f,dict)
+             and f.get("field")==field and f.get("value")==value]
+    if matches:
+        return [{"url":f.get("source",""),"fetched_at":f.get("fetched_at","")}
+                for f in matches]
+    return record.get("sources",[])
 
 def merge_cluster(records):
     if not records: raise ValueError("Empty cluster")
@@ -151,7 +165,8 @@ def merge_cluster(records):
         for fact in record["facts"]:
             if fact not in result["facts"]: result["facts"].append(copy.deepcopy(fact))
     for platform in result["handles"]:
-        options=[(r.get("handles",{}).get(platform,""),_confidence(r),r) for r in records]
+        options=[(r.get("handles",{}).get(platform,""),
+                  _confidence(r,"handles."+platform,r.get("handles",{}).get(platform,"")),r) for r in records]
         options=[v for v in options if v[0]]
         if not options: continue
         options.sort(key=lambda x:-x[1])
@@ -160,15 +175,15 @@ def merge_cluster(records):
         if len(distinct)>1:
             result["conflicts"].append({"field":"handles."+platform,"conflict":True,
                 "values":[{"value":v,"confidence":confidence,
-                           "sources":r.get("sources",[])} for v,confidence,r in options]})
+                           "sources":_evidence(r,"handles."+platform,v)} for v,confidence,r in options]})
     for field in ("names","locations","work","education"):
-        options=[(value,_confidence(r),r) for r in records for value in r.get(field,[])]
+        options=[(value,_confidence(r,field,value),r) for r in records for value in r.get(field,[])]
         if not options: continue
         options.sort(key=lambda x:-x[1])
         result["preferred"][field]=options[0][0]
         if field in ("names","locations") and len({normalize_name(v[0]) for v in options})>1:
             result["conflicts"].append({"field":field,"conflict":True,
-                "values":[{"value":v,"confidence":c,"sources":r.get("sources",[])}
+                "values":[{"value":v,"confidence":c,"sources":_evidence(r,field,v)}
                           for v,c,r in options]})
     result["derived_facts"]=[f for f in result["facts"] if f.get("derived")]
     return result

@@ -21,7 +21,11 @@ def record(name="",city="",email="",phone="",handle="",confidence=0.8):
 
 def test_normalize():
     p=record("Иванов Иван","Москва","PERSON+News@Example.COM","8 (916) 123-45-67")
-    normalized=normalize(p)["_normalized"]
+    canonical=normalize(p)
+    assert canonical["emails"]==["person@example.com"]
+    assert canonical["phones"]==["+79161234567"]
+    assert canonical["names"]==["ivanov ivan"]
+    normalized=canonical["_normalized"]
     assert normalized["names"]==["ivanov ivan"]
     assert normalized["emails"]==["person@example.com"]
     assert normalized["phones"]==["+79161234567"]

@@ -35,10 +35,12 @@ def build_graph(profiles):
             associates=attributes[i][1] & attributes[j][1]
             if len(identities)>=2:
                 graph.add_edge(left["id"],right["id"],type="same_person",
-                    weight=len(identities),evidence=sorted(identities))
+                    weight=len(identities),evidence=sorted(identities),
+                    derived=True,method="exact_identifier_match",confidence=0.95)
             elif len(associates)>=2:
                 graph.add_edge(left["id"],right["id"],type="associate",
-                    weight=len(associates),evidence=sorted(associates))
+                    weight=len(associates),evidence=sorted(associates),
+                    derived=True,method="shared_public_attributes",confidence=0.5)
     return graph
 
 def graph_data(rows):

@@ -66,3 +66,45 @@ def test_two_hotkeys_cancel_and_release(monkeypatch,trigger):
         assert set(removed)=={"esc","f10"}
 
     asyncio.run(run())
+
+
+def test_self_check_reports_screen_size(monkeypatch,capsys):
+    monkeypatch.setattr(game_bot,"snapshot",lambda monitor:("encoded",(1920,1080)))
+    result=game_bot.self_check(True)
+    assert result["hotkeys_registered"] is True
+    assert result["screen_available"] is True
+    assert result["screen_size"]==[1920,1080]
+    assert result["os"]
+    assert "GAME SELF-CHECK" in capsys.readouterr().out
+
+def test_cleanup_after_key_release_raises_mid_action(monkeypatch):
+    events=[]
+    count={"up":0}
+    def key_up(key):
+        count["up"]+=1
+        events.append(("up",key))
+        if count["up"]==1: raise RuntimeError("keyboard temporarily busy")
+    fake=SimpleNamespace(keyDown=lambda key:events.append(("down",key)),
+                         keyUp=key_up,FAILSAFE=True)
+    monkeypatch.setitem(sys.modules,"pyautogui",fake)
+    game_bot.PRESSED.clear()
+    with pytest.raises(RuntimeError):
+        game_bot.do_action({"action":"press","params":{"key":"w"}},(100,100))
+    assert "w" in game_bot.PRESSED
+    game_bot.release_all()
+    assert events==[("down","w"),("up","w"),("up","w")]
+    assert not game_bot.PRESSED
+
+def test_cleanup_attempts_every_held_key_even_if_one_fails(monkeypatch):
+    events=[]
+    def key_up(key):
+        events.append(key)
+        if key=="w": raise OSError("unavailable")
+    monkeypatch.setitem(sys.modules,"pyautogui",SimpleNamespace(keyUp=key_up))
+    game_bot.PRESSED.clear()
+    game_bot.PRESSED.update({"w","space"})
+    with pytest.raises(RuntimeError):
+        game_bot.release_all()
+    assert set(events)=={"w","space"}
+    assert game_bot.PRESSED=={"w"}
+    game_bot.PRESSED.clear()

@@ -27,7 +27,7 @@ class Store:
         with self.lock,self.db:
             self.db.executescript("""
                 CREATE TABLE IF NOT EXISTS targets
-                (id TEXT PRIMARY KEY,value TEXT NOT NULL UNIQUE,status TEXT NOT NULL,error TEXT NOT NULL);
+                (id TEXT PRIMARY KEY,value TEXT NOT NULL UNIQUE COLLATE NOCASE,status TEXT NOT NULL,error TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS profiles
                 (id TEXT PRIMARY KEY,target_id TEXT UNIQUE NOT NULL,data TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS logs
@@ -77,9 +77,9 @@ class Store:
                 profile["id"]=existing["id"]
                 for key in FIELDS:
                     if key=="conflicts": continue
-                    seen={json.dumps(v,sort_keys=True,ensure_ascii=False) for v in existing[key]}
+                    seen={(v.get("url","").rstrip("/").lower() if key=="sources" and isinstance(v,dict) else json.dumps(v,sort_keys=True,ensure_ascii=False)) for v in existing[key]}
                     profile[key]=existing[key]+[v for v in profile[key]
-                        if json.dumps(v,sort_keys=True,ensure_ascii=False) not in seen]
+                        if (v.get("url","").rstrip("/").lower() if key=="sources" and isinstance(v,dict) else json.dumps(v,sort_keys=True,ensure_ascii=False)) not in seen]
             self.db.execute("INSERT INTO profiles VALUES(?,?,?) ON CONFLICT(target_id) DO UPDATE SET data=excluded.data",
                             (profile["id"],target_id,json.dumps(profile,ensure_ascii=False)))
             return profile

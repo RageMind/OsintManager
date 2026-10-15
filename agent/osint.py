@@ -1,7 +1,7 @@
 """Supervised public-source processing loop."""
 import asyncio
 from .planner import plan
-from .executor import fetch_page
+from .executor import fetch_page,reset_policy
 from .extractor import extract
 from .report import save_reports
 from .resolve import resolve_all
@@ -19,6 +19,7 @@ async def fetch_with_retry(url,settings):
             await asyncio.sleep(2**attempt)
 
 async def run_osint(controller,target_id=None):
+    reset_policy()
     store=controller.store
     rows=[store.target(target_id)] if target_id else store.targets()
     rows=[r for r in rows if r]

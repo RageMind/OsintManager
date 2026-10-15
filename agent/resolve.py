@@ -90,6 +90,16 @@ def normalize(record):
                     "source":source.get("url",""),"fetched_at":source.get("fetched_at",""),
                     "confidence":float(source.get("confidence",0.5)),
                     "derived":True,"method":"normalize"})
+    result["_original"]={field:copy.deepcopy(result.get(field,[]))
+                         for field in ("names","locations")}
+    result["_original"]["handles"]=copy.deepcopy(result["handles"])
+    for field in ("names","emails","phones","locations"):
+        result[field]=list(normalized[field])
+    result["handles"]={key:normalized["handles"].get(key,"")
+                       for key in ("telegram","github","vk","x")}
+    for social in result["socials"]:
+        if isinstance(social,dict) and canonical_url(social.get("url","")):
+            social["url"]=canonical_url(social["url"])
     return result
 
 def block_keys(record):
@@ -156,7 +166,8 @@ def merge_cluster(records):
     seen={k:set() for k in FIELDS}
     for record in records:
         for key in FIELDS:
-            for value in record.get(key,[]):
+            for value in (record.get("_original",{}).get(key,record.get(key,[]))
+                          if key in ("names","locations") else record.get(key,[])):
                 signature=(canonical_url(value.get("url","")) if key=="sources" and isinstance(value,dict)
                            else json.dumps(value,sort_keys=True,ensure_ascii=False))
                 if signature not in seen[key]:
@@ -165,8 +176,8 @@ def merge_cluster(records):
         for fact in record["facts"]:
             if fact not in result["facts"]: result["facts"].append(copy.deepcopy(fact))
     for platform in result["handles"]:
-        options=[(r.get("handles",{}).get(platform,""),
-                  _confidence(r,"handles."+platform,r.get("handles",{}).get(platform,"")),r) for r in records]
+        options=[(r.get("_original",{}).get("handles",r.get("handles",{})).get(platform,""),
+                  _confidence(r,"handles."+platform,r.get("_original",{}).get("handles",r.get("handles",{})).get(platform,"")),r) for r in records]
         options=[v for v in options if v[0]]
         if not options: continue
         options.sort(key=lambda x:-x[1])
@@ -177,7 +188,8 @@ def merge_cluster(records):
                 "values":[{"value":v,"confidence":confidence,
                            "sources":_evidence(r,"handles."+platform,v)} for v,confidence,r in options]})
     for field in ("names","locations","work","education"):
-        options=[(value,_confidence(r,field,value),r) for r in records for value in r.get(field,[])]
+        options=[(value,_confidence(r,field,value),r) for r in records
+                 for value in r.get("_original",{}).get(field,r.get(field,[]))]
         if not options: continue
         options.sort(key=lambda x:-x[1])
         result["preferred"][field]=options[0][0]

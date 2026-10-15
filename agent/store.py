@@ -38,8 +38,15 @@ def _merge_source(existing,incoming):
                 data[field].append(value)
                 have.add(_key(value,field))
     for platform,value in incoming.get("handles",{}).items():
-        if platform in data["handles"] and value and not data["handles"][platform]:
+        if platform not in data["handles"] or not value: continue
+        previous=data["handles"][platform]
+        if not previous:
             data["handles"][platform]=value
+        elif previous.casefold()!=value.casefold():
+            conflict={"field":"handles."+platform,"conflict":True,
+                      "values":[{"value":previous,"sources":existing.get("sources",[])},
+                                {"value":value,"sources":incoming.get("sources",[])}]}
+            if conflict not in data["conflicts"]: data["conflicts"].append(conflict)
     data.setdefault("facts",[])
     for fact in incoming.get("facts",[]):
         if fact not in data["facts"]: data["facts"].append(fact)
@@ -63,9 +70,12 @@ class Store:
                 CREATE TABLE IF NOT EXISTS logs
                 (id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT NOT NULL,
                  level TEXT NOT NULL,msg TEXT NOT NULL);
-                INSERT OR IGNORE INTO source_records(target_id,data)
-                    SELECT target_id,data FROM profiles;
             """)
+            version=self.db.execute("PRAGMA user_version").fetchone()[0]
+            if version<1:
+                self.db.execute("INSERT OR IGNORE INTO source_records(target_id,data) "
+                                "SELECT target_id,data FROM profiles")
+                self.db.execute("PRAGMA user_version=1")
     def add_target(self,value):
         value=value.strip()
         if not 1<=len(value)<=500: raise ValueError("Invalid target")

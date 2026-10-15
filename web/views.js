@@ -42,7 +42,32 @@ const UI={
  profileDetail(){
   const p=App.state.detail;
   $("profile-detail").hidden=!p;
-  if(p)$("profile-json").textContent=JSON.stringify(p,null,2);
+  if(!p)return;
+  $("profile-json").textContent=JSON.stringify(p,null,2);
+  let container=$("fact-panels");
+  if(!container){
+    container=document.createElement("div");
+    container.id="fact-panels";
+    $("profile-detail").insertBefore(container,$("profile-json"));
+  }
+  const facts=(p.facts||[]).filter(f=>f&&!f.derived);
+  const derived=(p.facts||[]).filter(f=>f&&f.derived);
+  const render=(items,kind)=>items.map(f=>{
+    const value=typeof f.value==="string"?f.value:JSON.stringify(f.value);
+    const confidence=Number(f.confidence);
+    const score=Number.isFinite(confidence)?Math.round(Math.max(0,Math.min(1,confidence))*100)+"%":"неизвестно";
+    return "<div class='evidence-item'><span class='evidence-badge "+kind+"'>"+
+      (kind==="derived"?"Выведено":"Источник")+"</span> "+
+      "<strong>"+this.escape(f.field)+"</strong>: "+this.escape(value)+
+      "<small>Уверенность: "+this.escape(score)+"</small>"+
+      "<small>Источник: "+this.escape(f.source||"не указан")+
+      " | "+this.escape(f.fetched_at||"дата неизвестна")+"</small></div>";
+  }).join("");
+  const method=p.derived?"Объединение профилей является выводом (method: "+
+    this.escape(p.method||"не указан")+")":"";
+  container.innerHTML=(method?"<p class='derived-note'>"+method+"</p>":"")+
+    "<h3>Подтверждённые факты ("+facts.length+")</h3>"+render(facts,"source")+
+    "<h3>Производные сведения ("+derived.length+")</h3>"+render(derived,"derived");
  },
  logs(){
   const filter=$("log-level").value;
@@ -66,6 +91,14 @@ const UI={
  async graph(){
   if(!$("graph").classList.contains("active"))return;
   const canvas=$("graph-canvas");
+  let legend=$("graph-legend");
+  if(!legend){
+    legend=document.createElement("div");legend.id="graph-legend";
+    legend.className="graph-legend";
+    legend.innerHTML="<span><i class='line-sample identity'></i> same_person (2+ атрибута)</span>"+
+      "<span><i class='line-sample associate'></i> associate (2+ атрибута)</span>";
+    canvas.parentNode.insertBefore(legend,canvas);
+  }
   try{
     const graph=await App.api("/api/graph");
     if(!window.vis){canvas.textContent="Графическая библиотека недоступна. Узлов: "+graph.nodes.length;return;}

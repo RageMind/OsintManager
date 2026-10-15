@@ -7,3 +7,6 @@ __pycache__/
 reports/
 dumps/
 .pytest_cache/
+
+data/
+*.log

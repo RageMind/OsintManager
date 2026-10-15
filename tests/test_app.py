@@ -1,12 +1,13 @@
-"""Storage and API regression tests (run with unittest)."""
-import json
+"""Offline SQLite and ASGI API regression tests."""
+import asyncio
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from agent.store import Store, new_profile
+import httpx
+from agent.store import Store,new_profile
 
 class StoreTests(unittest.TestCase):
     def setUp(self):
@@ -45,19 +46,21 @@ class StoreTests(unittest.TestCase):
 
 class ApiTests(unittest.TestCase):
     def test_local_state_and_authorization(self):
-        from fastapi.testclient import TestClient
         from agent.controller import Controller
         from agent.api import create_app
         with tempfile.TemporaryDirectory() as folder:
             with patch.dict(os.environ,{"DATABASE_PATH":str(Path(folder)/"test.db"),"APP_TOKEN":"unit-test-token"}):
                 controller=Controller()
-                with TestClient(create_app(controller)) as client:
-                    self.assertEqual(client.get("/api/state").status_code,401)
-                    headers={"Authorization":"Bearer unit-test-token"}
-                    self.assertEqual(client.get("/api/state",headers=headers).status_code,200)
-                    response=client.post("/api/targets",json={"value":"project-alpha"},headers=headers)
-                    self.assertEqual(response.status_code,200)
-                    self.assertEqual(len(client.get("/api/targets",headers=headers).json()),1)
+                async def exercise():
+                    transport=httpx.ASGITransport(app=create_app(controller))
+                    async with httpx.AsyncClient(transport=transport,base_url="http://test") as client:
+                        self.assertEqual((await client.get("/api/state")).status_code,401)
+                        headers={"Authorization":"Bearer unit-test-token"}
+                        self.assertEqual((await client.get("/api/state",headers=headers)).status_code,200)
+                        response=await client.post("/api/targets",json={"value":"project-alpha"},headers=headers)
+                        self.assertEqual(response.status_code,200)
+                        self.assertEqual(len((await client.get("/api/targets",headers=headers)).json()),1)
+                asyncio.run(exercise())
                 controller.store.db.close()
 
 if __name__=="__main__":

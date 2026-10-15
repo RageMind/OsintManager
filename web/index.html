@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OSINT Manager</title>
+<link rel="stylesheet" href="/web/style.css">
+<script defer src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<script defer src="/web/app.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo">OM</span><div><strong>OSINT Manager</strong><small>Local Agent Console</small></div></div>
+  <div class="header-right">
+    <span id="connection" class="muted">Подключение</span>
+    <span id="status" class="pill">idle</span>
+  </div>
+</header>
+<div class="layout">
+<nav id="navigation" aria-label="Разделы">
+  <button class="active" data-tab="dashboard">Дашборд</button>
+  <button data-tab="targets">Цели</button>
+  <button data-tab="profiles">Профили</button>
+  <button data-tab="graph">Граф</button>
+  <button data-tab="logs">Логи</button>
+  <button data-tab="game">Игра</button>
+  <button data-tab="settings">Настройки</button>
+</nav>
+<main>
+  <section id="dashboard" class="panel active">
+    <h1>Дашборд</h1>
+    <p class="muted">Статус и управление задачами</p>
+    <div id="stats" class="stats"></div>
+    <article><h2>Текущая задача</h2><div id="current-target">Нет активной задачи</div>
+      <progress id="progress" max="1" value="0"></progress><p id="uptime" class="muted"></p>
+      <div class="buttons">
+        <button id="start-osint" class="primary">Старт OSINT</button>
+        <button id="pause">Пауза</button><button id="resume">Продолжить</button>
+        <button id="stop" class="danger">Стоп</button>
+      </div>
+    </article>
+  </section>
+  <section id="targets" class="panel">
+    <h1>Цели</h1>
+    <p class="muted">Добавляйте только собственные, разрешённые источники и записи.</p>
+    <article><form id="add-target" class="toolbar"><input id="target-value" placeholder="URL / публичный аккаунт / название" maxlength="500" required><button class="primary">Добавить</button></form>
+      <label id="dropzone" class="dropzone">Перетащите targets.txt сюда или выберите файл
+        <input id="target-file" type="file" accept=".txt,text/plain">
+      </label>
+      <div class="toolbar"><button id="delete-selected">Удалить выбранные</button><button id="run-selected">Прогнать выбранную</button><span id="target-count" class="muted"></span></div>
+      <div class="table-wrap"><table><thead><tr><th><input id="select-all" type="checkbox" aria-label="Выбрать всё"></th><th>Цель</th><th>Статус</th><th>Ошибка</th><th></th></tr></thead><tbody id="target-rows"></tbody></table></div>
+    </article>
+  </section>
+  <section id="profiles" class="panel">
+    <h1>Профили</h1>
+    <div class="toolbar"><input id="profile-search" placeholder="Поиск по полям"><select id="profile-filter"><option value="all">Все</option><option value="conflict">С конфликтами</option></select><button id="export-json">JSON</button><button id="export-csv">CSV</button></div>
+    <div id="profile-grid" class="cards"></div>
+    <article id="profile-detail" hidden><div class="toolbar"><h2>Досье</h2><button id="close-detail">Закрыть</button></div><pre id="profile-json"></pre><div class="buttons"><button id="single-json">Экспорт JSON</button><button id="single-csv">Экспорт CSV</button></div></article>
+  </section>
+  <section id="graph" class="panel">
+    <h1>Граф связей</h1>
+    <p class="muted">Узлы: подтверждённые профили. Ребра: явные связи из данных.</p>
+    <article><div id="graph-canvas" role="img" aria-label="Интерактивный граф профилей"></div></article>
+  </section>
+  <section id="logs" class="panel">
+    <h1>Логи</h1><div class="toolbar"><select id="log-level"><option>ALL</option><option>DEBUG</option><option>INFO</option><option>WARN</option><option>ERROR</option></select><input id="log-search" placeholder="Поиск"><label class="inline"><input id="autoscroll" type="checkbox" checked> Автопрокрутка</label><button id="download-logs">Скачать</button></div>
+    <article><div id="log-list" class="log-list"></div></article>
+  </section>
+  <section id="game" class="panel">
+    <h1>Игровой режим</h1><div class="buttons"><button id="game-start" class="primary">Старт</button><button id="game-pause">Пауза</button><button id="game-resume">Продолжить</button><button id="game-stop" class="danger">Стоп</button></div>
+    <article><img id="game-frame" alt="Текущий игровой кадр"><h2>Состояние</h2><pre id="game-state">{}</pre><h2>Последнее решение</h2><pre id="game-decision">{}</pre></article>
+  </section>
+  <section id="settings" class="panel">
+    <h1>Настройки</h1>
+    <p class="muted">Секреты скрыты. Сохранение перезагружает конфигурацию после остановки задачи.</p>
+    <form id="settings-form"><article><h2>.env</h2><div id="env-fields" class="field-grid"></div></article><article><h2>Промпты</h2><div id="prompt-fields"></div></article><button class="primary">Сохранить и перезагрузить</button></form>
+  </section>
+</main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

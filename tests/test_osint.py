@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-from fastapi.testclient import TestClient
+import httpx
 
 from agent.controller import Controller
 from agent.api import create_app
@@ -43,8 +43,11 @@ def test_two_targets_one_profile_without_network(tmp_path):
         assert len(profiles[0]["facts"])>=2
         assert all(f["source"] and f["fetched_at"] for f in profiles[0]["facts"])
         assert (Path(env["REPORT_DIR"])/"graph.json").exists()
-        with TestClient(create_app(ctrl)) as browser:
-            response=browser.get("/api/graph")
-            assert response.status_code==200
-            assert response.json()["nodes"][0]["id"]==profiles[0]["id"]
+        async def check_api():
+            transport=httpx.ASGITransport(app=create_app(ctrl))
+            async with httpx.AsyncClient(transport=transport,base_url="http://test") as browser:
+                response=await browser.get("/api/graph")
+                assert response.status_code==200
+                assert response.json()["nodes"][0]["id"]==profiles[0]["id"]
+        asyncio.run(check_api())
         ctrl.store.db.close()

@@ -19,6 +19,7 @@ DEFAULTS = {
     "OSINT_TIMEOUT": "20",
     "OSINT_MAX_CHARS": "12000",
     "OSINT_DELAY": "0.7",
+    "OSINT_RESOLVE_THRESHOLD": "0.75",
     "LLM_TIMEOUT": "60",
     "LLM_RETRIES": "4",
     "GAME_FPS": "2",
@@ -49,6 +50,8 @@ def update(changes):
         if key in ("UI_PORT", "OSINT_MAX_PAGES", "OSINT_TIMEOUT", "OSINT_MAX_CHARS", "LLM_TIMEOUT", "LLM_RETRIES", "GAME_MEMORY"):
             if not value.isdigit() or int(value) <= 0:
                 raise ValueError("Must be positive: " + key)
+        if key == "OSINT_RESOLVE_THRESHOLD" and not 0 < float(value) <= 1:
+            raise ValueError("OSINT_RESOLVE_THRESHOLD must be in (0, 1]")
         data[key] = value
     ENV.write_text("".join(k + "=" + v + "\n" for k, v in data.items()), encoding="utf-8")
     try:
@@ -88,6 +91,7 @@ class Settings:
     retries: int
     fps: float
     game_memory: int
+    resolve_threshold: float
 
     @classmethod
     def load(cls):
@@ -103,5 +107,6 @@ class Settings:
             min(20, int(v["OSINT_MAX_PAGES"])), int(v["OSINT_TIMEOUT"]),
             min(40000, int(v["OSINT_MAX_CHARS"])), float(v["OSINT_DELAY"]),
             int(v["LLM_TIMEOUT"]), min(8, int(v["LLM_RETRIES"])),
-            min(5, float(v["GAME_FPS"])), min(100, int(v["GAME_MEMORY"]))
+            min(5, float(v["GAME_FPS"])), min(100, int(v["GAME_MEMORY"])),
+            float(v["OSINT_RESOLVE_THRESHOLD"])
         )

@@ -149,8 +149,8 @@ def merge_cluster(records):
     best=max(records,key=_confidence)
     result=new_profile()
     result["id"]=records[0]["id"]
-    result["derived"]=False
-    result["method"]="source_merge" if len(records)>1 else "source"
+    result["derived"]=len(records)>1
+    result["method"]="entity_resolution" if len(records)>1 else "source"
     result["facts"]=[]
     result["preferred"]={}
     seen={k:set() for k in FIELDS}

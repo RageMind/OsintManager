@@ -72,7 +72,11 @@ const UI={
     if(this.network)this.network.destroy();
     this.network=new vis.Network(canvas,{
       nodes:new vis.DataSet(graph.nodes),
-      edges:new vis.DataSet(graph.edges)
+      edges:new vis.DataSet(graph.edges.map(edge=>Object.assign({},edge,{
+        color:edge.type==="same_person"?"#69baff":"#a3aa81",
+        dashes:edge.type==="associate",
+        title:edge.type+" - "+edge.weight+" signals"
+      })))
     },{autoResize:true,interaction:{hover:true},physics:{stabilization:true},
        nodes:{shape:"dot",size:15,font:{color:"#e8edf7"},color:"#6799fa"},
        edges:{color:"#687d9b",font:{color:"#a8b4ca"}}});

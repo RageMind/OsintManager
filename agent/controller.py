@@ -82,6 +82,12 @@ class Controller:
             self.log("ERROR",str(error))
             self.bus.emit("error",{"where":mode,"msg":str(error)})
         finally:
+            if mode=="game":
+                from .game_bot import release_all
+                try:
+                    await asyncio.to_thread(release_all)
+                except Exception as error:
+                    self.log("ERROR","Key cleanup: "+str(error))
             self.current_target=""
             self.progress=0.0
             self.publish()

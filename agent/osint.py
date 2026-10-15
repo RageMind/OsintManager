@@ -5,6 +5,18 @@ from .executor import fetch_page
 from .extractor import extract
 from .report import save_reports
 
+
+async def fetch_with_retry(url,settings):
+    for attempt in range(3):
+        try:
+            return await fetch_page(url,settings)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            if attempt==2:
+                raise
+            await asyncio.sleep(2**attempt)
+
 async def run_osint(controller,target_id=None):
     store=controller.store
     rows=[store.target(target_id)] if target_id else store.targets()
@@ -27,7 +39,7 @@ async def run_osint(controller,target_id=None):
             for position,url in enumerate(urls):
                 await controller.wait_running()
                 try:
-                    page=await fetch_page(url,controller.settings)
+                    page=await fetch_with_retry(url,controller.settings)
                     record=await extract(controller.llm,target["value"],page)
                     profile=store.upsert(identifier,record)
                     controller.bus.emit("profile",{"id":profile["id"],

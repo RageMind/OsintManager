@@ -39,7 +39,7 @@ def test_two_targets_one_profile_without_network(tmp_path):
         profiles=ctrl.store.profiles()
         assert len(profiles)==1
         assert ctrl.store.counts()["processed"]==2
-        assert profiles[0]["emails"]==["public+tag@example.org"]
+        assert profiles[0]["emails"]==["public@example.org"]
         assert len(profiles[0]["facts"])>=2
         assert all(f["source"] and f["fetched_at"] for f in profiles[0]["facts"])
         assert (Path(env["REPORT_DIR"])/"graph.json").exists()

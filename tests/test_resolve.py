@@ -81,7 +81,9 @@ def test_conflicting_values_retained():
     assert {i["value"] for i in conflicts[0]["values"]}=={"one","two"}
     assert all(item["sources"] for item in conflicts[0]["values"])
     assert merged["preferred"]["names"]=="Иванов Иван"
-    assert merged["derived"] is False
+    assert merged["derived"] is True
+    assert merged["method"]=="entity_resolution"
+    assert all(not f["derived"] for f in merged["facts"] if f["method"]=="source")
 
 def test_graph_edges_types_not_combined():
     a=record("A",email="first@org.com",phone="+79161112233")

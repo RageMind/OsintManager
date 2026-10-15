@@ -4,6 +4,7 @@ from .planner import plan
 from .executor import fetch_page
 from .extractor import extract
 from .report import save_reports
+from .resolve import resolve_all
 
 
 async def fetch_with_retry(url,settings):
@@ -64,5 +65,7 @@ async def run_osint(controller,target_id=None):
                             last_error if not done else "")
         controller.progress=(index+1)/len(rows)
         controller.publish()
-    save_reports(store.profiles(),controller.settings.reports)
-    controller.log("INFO","Exports complete")
+    profiles=resolve_all(store,controller.settings.resolve_threshold)
+    save_reports(profiles,controller.settings.reports)
+    controller.publish()
+    controller.log("INFO","Resolved "+str(len(profiles))+" profiles and updated exports")

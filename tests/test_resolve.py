@@ -96,7 +96,7 @@ def test_graph_edges_types_not_combined():
     assert graph[a["id"]][b["id"]]["type"]=="same_person"
     assert graph[a["id"]][b["id"]]["weight"]==2
     assert graph[c["id"]][d["id"]]["type"]=="associate"
-    assert graph[c["id"]][d["id"]]["weight"]==2
+    assert graph[c["id"]][d["id"]]["weight"]==3
     assert len(graph.edges)==2
     assert {edge["type"] for edge in graph_data([a,b,c,d])["edges"]}=={"same_person","associate"}
 

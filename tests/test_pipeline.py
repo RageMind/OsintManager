@@ -16,7 +16,9 @@ HTML={
 
 class OfflineLLM:
     async def ask(self,system,body):
-        page=json.loads(body)["page"]
+        data=json.loads(body)
+        if "page" not in data:
+            return {"urls":data["seed_urls"]}
         return {"names":["Ivanov Ivan"],"emails":["owner+lab@example.org"],
                 "work":[],"education":[],"interests":[],"raw_snippets":[]}
 

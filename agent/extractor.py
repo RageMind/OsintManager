@@ -1,4 +1,4 @@
-"""Extract page-supported public facts with per-field provenance."""
+"""Extract verified public-page facts and tolerate malformed LLM responses."""
 import json
 import re
 from urllib.parse import urlsplit
@@ -10,16 +10,38 @@ TEXT_FIELDS=("names","emails","phones","locations","work",
              "education","interests","raw_snippets")
 HANDLE_FIELDS=("telegram","github","vk","x")
 
+class InvalidExtraction(ValueError):
+    """The model returned a response that cannot be interpreted as an object."""
+
 def on_page(value,page):
     candidate=str(value).strip().casefold()
     body=page.get("text","").casefold()
     url=page.get("url","").casefold()
     return bool(candidate) and (candidate in body or candidate in url)
 
+def _object(value):
+    if isinstance(value,dict): return value
+    if isinstance(value,str):
+        try: value=json.loads(value)
+        except (ValueError,TypeError) as error:
+            raise InvalidExtraction("LLM returned invalid JSON") from error
+        if isinstance(value,dict): return value
+    raise InvalidExtraction("LLM must return a JSON object")
+
+async def _ask_validated(llm,target,page):
+    system=get_prompt("extractor")
+    body=json.dumps({"label":target,"page":page},ensure_ascii=False)
+    for attempt in range(2):
+        try:
+            data=await llm.ask(system,body)
+            return _object(data)
+        except (ValueError,TypeError,KeyError) as error:
+            if attempt: raise InvalidExtraction("LLM invalid after one retry") from error
+            system+="\nReturn one valid JSON object only. Arrays must be arrays, not strings. No markdown."
+    raise InvalidExtraction("LLM invalid after one retry")
+
 async def extract(llm,target,page):
-    data=await llm.ask(get_prompt("extractor"),json.dumps({
-        "label":target,"page":page},ensure_ascii=False))
-    if not isinstance(data,dict): raise ValueError("Expected JSON object")
+    data=await _ask_validated(llm,target,page)
     out=new_profile()
     timestamp=now()
     def add_fact(field,value):

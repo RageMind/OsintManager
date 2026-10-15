@@ -3,6 +3,7 @@ import asyncio
 import base64
 import io
 import json
+import platform
 import random
 import threading
 from collections import deque
@@ -48,8 +49,8 @@ def do_action(decision,dimensions):
             try:
                 pyautogui.keyDown(key)
             finally:
-                try: pyautogui.keyUp(key)
-                finally: PRESSED.discard(key)
+                pyautogui.keyUp(key)
+                PRESSED.discard(key)
         else:
             raise ValueError("Unsupported action")
 
@@ -57,9 +58,13 @@ def release_all():
     with INPUT_LOCK:
         if not PRESSED: return
         import pyautogui
+        failures=[]
         for key in tuple(PRESSED):
             try: pyautogui.keyUp(key)
-            finally: PRESSED.discard(key)
+            except Exception as error: failures.append((key,error))
+            else: PRESSED.discard(key)
+        if failures:
+            raise RuntimeError("Unable to release keys: "+",".join(k for k,_ in failures))
 
 def install_hotkeys(flag,logger):
     try:
@@ -70,6 +75,20 @@ def install_hotkeys(flag,logger):
     except (ImportError,OSError,PermissionError) as error:
         logger("WARN","Global hotkeys unavailable: "+str(error))
         return None,[]
+
+
+def self_check(hotkeys_registered=False):
+    """Report hotkeys, platform, screen capture capability and dimensions."""
+    result={"os":platform.system(),"hotkeys_registered":bool(hotkeys_registered),
+            "screen_available":False,"screen_size":None}
+    try:
+        _,size=snapshot(None)
+        result["screen_available"]=True
+        result["screen_size"]=list(size)
+    except Exception as error:
+        result["screen_error"]=str(error)
+    print("GAME SELF-CHECK "+json.dumps(result,ensure_ascii=False),flush=True)
+    return result
 
 async def watch_hotkeys(flag,controller,task):
     while not flag.is_set():
@@ -85,6 +104,7 @@ async def run_game(controller,fps):
     keyboard,handles=install_hotkeys(emergency,controller.log)
     watcher=asyncio.create_task(watch_hotkeys(emergency,controller,asyncio.current_task()))
     try:
+        await asyncio.to_thread(self_check,len(handles)==2)
         while not controller.stop_event.is_set():
             await controller.wait_running()
             encoded,dimensions=await asyncio.to_thread(snapshot,None)

@@ -6,6 +6,12 @@ import networkx as nx
 
 from .resolve import normalize, normalize_name
 
+PLATFORM_DOMAINS=frozenset((
+    "github.com","www.github.com","t.me","telegram.me","vk.com",
+    "x.com","twitter.com","instagram.com","facebook.com",
+    "linkedin.com","youtube.com","www.youtube.com",
+))
+
 def _attributes(profile):
     n=normalize(profile)["_normalized"]
     identity={"email:"+x for x in n["emails"]}
@@ -15,7 +21,8 @@ def _attributes(profile):
     for social in profile.get("socials",[]):
         if isinstance(social,dict):
             domain=urlsplit(social.get("url","")).hostname
-            if domain: domains.add("domain:"+domain.casefold())
+            if domain and domain.casefold() not in PLATFORM_DOMAINS:
+                domains.add("domain:"+domain.casefold())
     organizations={"organization:"+normalize_name(x) for x in profile.get("work",[])
                    if isinstance(x,str) and normalize_name(x)}
     locations={"city:"+x for x in n["locations"] if x}

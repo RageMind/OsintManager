@@ -17,7 +17,8 @@ def test_release_all_only_tracked_keys(monkeypatch):
     assert set(released)=={"w","space"}
     assert not game_bot.PRESSED
 
-def test_two_hotkeys_cancel_and_release(monkeypatch):
+@pytest.mark.parametrize("trigger",["esc","f10"])
+def test_two_hotkeys_cancel_and_release(monkeypatch,trigger):
     callbacks={}
     removed=[]
     fake_keyboard=SimpleNamespace(
@@ -56,7 +57,7 @@ def test_two_hotkeys_cancel_and_release(monkeypatch):
             await asyncio.sleep(0.01)
         assert set(callbacks)=={"esc","f10"}
         game_bot.PRESSED.add("w")
-        callbacks["f10"]()
+        callbacks[trigger]()
         with pytest.raises(asyncio.CancelledError):
             await task
         assert ctrl.stop_event.is_set()

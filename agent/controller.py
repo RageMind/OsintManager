@@ -35,6 +35,9 @@ class Controller:
 
     def log(self,level,message):
         item=self.store.log(level,message)
+        path=self.settings.database.parent/"agent.log"
+        with path.open("a",encoding="utf-8") as stream:
+            stream.write(item["ts"]+" ["+level+"] "+str(message).replace("\\n"," ")+"\\n")
         self.bus.emit("log",item)
         print("["+level+"] "+str(message),flush=True)
 
